@@ -23,4 +23,26 @@ Variational Autoencoder using the MNIST dataset. Also included, is an ANN and CN
 * need to implement regulizer
 
 ## MNIST: VAE ##
-*Currently in development*
+* Includes a pretrained model with 500 epochs
+* encoder: 
+  * 3 convolutional layers
+  * (batch_size, 1, 28, 28) -> (batch_size, 64, 1, 1)
+  * ReLU activation
+  * Compress to (batch_size, 64)
+ 
+* sampling:
+  * mean: linear layer (64, 64)
+  * log variance: linear layer (64, 64)
+
+* decoder:
+  * 3 convolutional layers (transpose)
+  * decompress to (batch_size, 64, 1, 1)
+  * ReLU and Sigmoid activation
+  * (batch_size, 64, 1, 1) -> (batch_size, 1, 28, 28) 
+
+* mse loss function with reduction being sum
+
+* example generation:
+  * Sampling:  
+    * mean: tensor of zeros (batch_size, 64)
+    * log variance: tensor of ones (batch_size, 64)
