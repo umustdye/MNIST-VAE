@@ -19,11 +19,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+#ignore warnings, i.e those annoying ones that appear for every run
+import warnings
+warnings.filterwarnings("ignore")
+
+
 #-------------------------------------#
 #           CREATE THE VAE            #
 #-------------------------------------#
 class VAE(nn.Module):
-    def __init__(self, image_channels=1, h_dim=28*28, z_dim=64):
+    def __init__(self):
         super(VAE, self).__init__()
         #1, 28, 28
         self.encoder = nn.Sequential(
@@ -36,8 +41,11 @@ class VAE(nn.Module):
             Compress()
             )
         
+        
         self.fc_mu = nn.Linear(64, 64)
         self.fc_logvar = nn.Linear(64, 64)
+        
+        
         
         #64, 1, 1
         self.decoder = nn.Sequential(
@@ -56,23 +64,29 @@ class VAE(nn.Module):
         z = mu + (std * e)
         return z
     
-    def generateExample(self, x):
+    def generateExample(self, num_examples):
         #x must be 64, 1, 1 tensor
-        return self.decoder(x)
+        mu = torch.zeros(num_examples, 64).to("cuda")
+        logvar = torch.ones(num_examples, 64).to("cuda")
+        z = self.sample(mu, logvar)
+        
+        return self.decoder(z)
     
     def forward(self, x):
-        print(f"Before encoding: {x.shape}")
+        #print(f"Before encoding: {x.shape}")
         x = self.encoder(x)
-        print(f"After encoding: {x.shape}")
+        #print(f"After encoding: {x.shape}")
         mu = self.fc_mu(x)
-        print(f"Mean (mu) Shape: {mu.shape}")
+        #mu = torch.zeros(10, 64).to("cuda")
+        #print(f"Mean (mu) Shape: {mu.shape}")
         logvar = self.fc_logvar(x)
-        print(f"Log Variance Shape: {logvar.shape}")
+        #logvar = torch.ones(10, 64).to("cuda")
+        #print(f"Log Variance Shape: {logvar.shape}")
         z = self.sample(mu, logvar)
-        print(f"Z Shape: {z.shape}")
+        #print(f"Z Shape: {z.shape}")
         recon_x = self.decoder(z)
         #mu 0 logvar 1 for recon
-        print(f"Reconstructed x After Decoding: {recon_x.shape}")
+        #print(f"Reconstructed x After Decoding: {recon_x.shape}")
         return recon_x, mu, logvar
 
 class Compress(nn.Module):
@@ -90,6 +104,10 @@ def loss_fn(recon_x, x, mu, logvar):
     #BCELoss = functional.binary_cross_entropy(recon_x, x, reduction="sum")
     KL_Div = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
     return loss + KL_Div
+    #return BCELoss + KL_Div
+
+
+
     
 #-----------------------------#
 #       GET THE DATASET       #
@@ -147,13 +165,14 @@ def showExample(img):
 
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-print(device)
+print(f"Using device {device}\n")
 
-'''
+
+
 #training the VAE initially
 
 #one image channel because black and white
-model = VAE(image_channels=1).to(device)
+model = VAE().to(device)
 
 learning_rate = .001
 optimizer = torch.optim.Adam(model.parameters(), lr = learning_rate)
@@ -183,20 +202,21 @@ for t in range(epochs):
             #showImage(torchvision.utils.make_grid(recon_x.to("cpu")))
             print('loss: %.3f' %(running_loss / 2000))
             running_loss = 0.0
-    #1print(f"Done with epoch #{t+1}\n")
+    #print(f"Done with epoch #{t+1}\n")
     
+  
     
-    
 
 
-
-
+'''
+#save the trained model
 print("Saving model...")
 torch.save(model.state_dict(), "MNIST_VAE_MODEL_2.pt")
 print("Model saved.")
 '''
 
 '''
+#For reference---------
 Save:
 torch.save(model.state_dict(), PATH)
 
@@ -204,18 +224,28 @@ Load:
 model = TheModelClass(*args, **kwargs)
 model.load_state_dict(torch.load(PATH))
 model.eval()
+-----------------------
+'''
 '''
 #load the saved model (500 epoches)
 print("Loading previously saved model..")
-model = VAE(image_channels=1).to(device)
+model = VAE().to(device)
+
 model.load_state_dict(torch.load("MNIST_VAE_MODEL.pt"))
-print(model)
+#print(model)
 model.eval()
 print("Model has been loaded.")
+'''
 
+'''
+print("Loaded model's weight")
+for param in model.parameters():
+  print(param.data)
+'''
+  
 #generate a random example
 print("Generating a random example...")
-example = torch.rand(10, 64)
-print(example)
-model.generateExample(example.to(device))
+num_examples = 10
+#run the example through the decoder
+example = model.generateExample(num_examples)
 showExample(torchvision.utils.make_grid(example.to("cpu")))
